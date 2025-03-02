@@ -24,7 +24,9 @@ io.on("connection", (socket) => {
             games[roomCode] = { players: [socket.id], board: Array(9).fill(null) };
             socket.join(roomCode);
             socket.emit("roomCreated", roomCode);
-            console.log(`Room ${roomCode} created`);
+            console.log(`Room ${roomCode} created by ${socket.id}`);
+        } else {
+            socket.emit("error", "Room already exists");
         }
     });
 
@@ -33,7 +35,9 @@ io.on("connection", (socket) => {
             games[roomCode].players.push(socket.id);
             socket.join(roomCode);
             io.to(roomCode).emit("startGame", games[roomCode].players);
-            console.log(`Player joined room ${roomCode}`);
+            console.log(`Player ${socket.id} joined room ${roomCode}`);
+        } else {
+            socket.emit("error", "Room full or does not exist");
         }
     });
 
@@ -46,7 +50,17 @@ io.on("connection", (socket) => {
 
     socket.on("disconnect", () => {
         console.log("User disconnected:", socket.id);
+        Object.keys(games).forEach(roomCode => {
+            const room = games[roomCode];
+            room.players = room.players.filter(player => player !== socket.id);
+            
+            if (room.players.length === 0) {
+                delete games[roomCode]; // Remove empty rooms
+                console.log(`Room ${roomCode} deleted`);
+            }
+        });
     });
 });
 
-server.listen(3000, () => console.log("Server running on port 3000"));
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
